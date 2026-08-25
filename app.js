@@ -14,6 +14,8 @@ import {
   getStatusMeta,
   COUNTRY_META,
   REGION_LABELS,
+  REGIONS,
+  REGIONS_BY_COUNTRY,
 } from "./js/constants.js";
 import {
   distanceMeters,
@@ -24,6 +26,7 @@ import {
 import { buildDirectionsLinks, getExternalMapUrl } from "./js/directions.js";
 import { submitRating } from "./js/restaurantWrite.js";
 import { initAddRestaurantForm } from "./js/addRestaurantForm.js";
+import { initCsvImportForm } from "./js/csvImportForm.js";
 import { TEST_RESTAURANTS } from "./js/testData.js";
 
 // 기본 시작 위치: 사용자 위치를 못 가져오면 여의도역 기준으로 지도를 띄운다.
@@ -69,6 +72,11 @@ const els = {
   addPanelBackdrop: $("#add-panel-backdrop"),
   addForm: $("#add-restaurant-form"),
   pickingBanner: $("#picking-banner"),
+  csvImportBtn: $("#csv-import-btn"),
+  csvPanel: $("#csv-panel"),
+  csvPanelClose: $("#csv-panel-close"),
+  csvPanelBackdrop: $("#csv-panel-backdrop"),
+  csvPanelContent: $("#csv-panel-content"),
   toast: $("#toast"),
 };
 
@@ -82,21 +90,9 @@ async function init() {
   // 다른 타일 서비스로 교체할 때는 이 문자열만 바꾸면 된다 (js/mapProvider.js 참고).
   mapProvider = createMapProvider("leaflet-openfreemap");
 
-  // 사용자 위치 확인 전, 우선 여의도역 기준으로 빠르게 지도를 띄운다.
-  // (지도 로딩을 위치 권한 팝업 대기로 막지 않기 위함)
-  try {
-    await mapProvider.init({
-      containerId: "map",
-      center: [YEOUIDO_STATION.lat, YEOUIDO_STATION.lng],
-      zoom: 14,
-    });
-    mapProvider.onMapClick(() => closeDetailPanel());
-  } catch (err) {
-    console.error("지도 초기화 실패:", err);
-    els.mapError.textContent = "지도를 불러오지 못했습니다. 네트워크 연결을 확인해주세요.";
-    els.mapError.hidden = false;
-  }
-
+  // 버튼/필터/검색 등 UI는 지도 로딩을 절대 기다리지 않는다.
+  // (예전엔 지도 초기화가 끝나야 "맛집 등록" 버튼 등이 눌리기 시작해서,
+  //  모바일에서 지도가 느리면 버튼이 한동안 반응 없는 것처럼 보였다.)
   setupFilterBar();
   setupSearch();
   setupLocate();
@@ -114,11 +110,55 @@ async function init() {
     },
   });
 
+  initCsvImportForm({
+    els,
+    showToast,
+    onImported: async () => {
+      await loadRestaurants();
+      renderAll();
+    },
+  });
+
+  // 맛집 리스트도 지도와 무관하게 먼저 불러와서 보여준다.
   await loadRestaurants();
   renderAll();
 
+  // 지도는 별도로(백그라운드에서) 초기화한다. await 하지 않음.
+  initMap();
+}
+
+async function initMap() {
+  try {
+    await mapProvider.init({
+      containerId: "map",
+      center: [YEOUIDO_STATION.lat, YEOUIDO_STATION.lng],
+      zoom: 14,
+    });
+  } catch (err) {
+    console.error("지도 초기화 실패:", err);
+    els.mapError.textContent = "지도를 불러오지 못했습니다. 네트워크 연결을 확인해주세요.";
+    els.mapError.hidden = false;
+    return;
+  }
+
+  mapProvider.onMapClick(() => closeDetailPanel());
+  applyLabelLanguage(); // 현재 국가 필터에 맞는 지명 언어 적용
+
+  // 지도가 늦게 준비됐을 수 있으니, 이미 계산해둔 필터 결과로 마커를 다시 채워넣는다.
+  renderMarkers(getFilteredRestaurants());
+
   // 지도를 이미 띄운 뒤 백그라운드로 위치를 시도한다 (허용되면 그쪽으로 이동, 거부돼도 조용히 무시).
   attemptInitialLocate();
+}
+
+// 국가 필터에 맞춰 지도 라벨 언어를 바꾼다.
+// - 한국만 볼 때: 한국어만
+// - 일본만 볼 때: 영어 + 일본어 + 한국어 3줄
+// - 전체 볼 때: 기본(로마자+현지어 2줄)
+function applyLabelLanguage() {
+  const preset =
+    state.filters.country === "KR" ? "ko" : state.filters.country === "JP" ? "en-ja-ko" : "default";
+  mapProvider.setLabelLanguages?.(preset);
 }
 
 async function attemptInitialLocate() {
@@ -483,12 +523,47 @@ function setupDetailPanelClose() {
 // ------------------------------------------------------------
 // 필터 바 (요구사항 14)
 // ------------------------------------------------------------
+const FILTER_LABELS = {
+  country: { all: "전체", KR: "한국", JP: "일본" },
+  status: { all: "전체", want: "가고싶은", visited: "가본곳", avoid: "피할곳" },
+  category: {
+    all: "전체",
+    sushi: "스시",
+    ramen: "라멘",
+    yakiniku: "야키니쿠",
+    izakaya: "이자카야",
+    curry: "카레",
+    cafe: "카페",
+    dessert: "디저트",
+    etc: "기타",
+  },
+  nearby: { all: "전체", "500": "500m", "1000": "1km", "3000": "3km", "5000": "5km" },
+};
+
 function setupFilterBar() {
+  renderRegionOptions("all");
+  updateFilterTriggerLabels();
+
+  // 트리거 버튼 클릭 → 해당 팝오버만 열고 나머지는 닫기
+  els.filterbar.querySelectorAll(".filter-trigger").forEach((trigger) => {
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const item = trigger.closest(".filter-item");
+      const isOpen = item.classList.contains("is-open");
+      closeAllFilterPopovers();
+      if (!isOpen) {
+        item.classList.add("is-open");
+        item.querySelector(".filter-popover").classList.add("is-open");
+      }
+    });
+  });
+
+  // 팝오버 안의 옵션(chip) 클릭 → 필터 적용 + 팝오버 닫기
   els.filterbar.addEventListener("click", (e) => {
     const chip = e.target.closest(".chip");
     if (!chip) return;
-    const group = chip.closest("[data-filter-group]");
-    const filterKey = group.dataset.filterGroup;
+    const popover = chip.closest("[data-filter-group]");
+    const filterKey = popover.dataset.filterGroup;
     const value = chip.dataset.value;
 
     if (filterKey === "nearby" && value !== "all" && !state.userLocation) {
@@ -496,10 +571,65 @@ function setupFilterBar() {
       return;
     }
 
-    group.querySelectorAll(".chip").forEach((c) => c.classList.toggle("is-active", c === chip));
+    popover.querySelectorAll(".chip").forEach((c) => c.classList.toggle("is-active", c === chip));
     state.filters[filterKey] = value;
+
+    if (filterKey === "country") {
+      renderRegionOptions(value);
+      applyLabelLanguage();
+    }
+
+    updateFilterTriggerLabels();
+    closeAllFilterPopovers();
     renderAll();
   });
+
+  // 바깥 클릭/ESC로 팝오버 닫기
+  document.addEventListener("click", closeAllFilterPopovers);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllFilterPopovers();
+  });
+}
+
+function closeAllFilterPopovers() {
+  els.filterbar.querySelectorAll(".filter-item.is-open").forEach((item) => {
+    item.classList.remove("is-open");
+    item.querySelector(".filter-popover")?.classList.remove("is-open");
+  });
+}
+
+function updateFilterTriggerLabels() {
+  els.filterbar.querySelectorAll(".filter-item").forEach((item) => {
+    const popover = item.querySelector(".filter-popover");
+    const filterKey = popover.dataset.filterGroup;
+    const value = state.filters[filterKey];
+    const labelEl = item.querySelector("[data-value-label]");
+    const label =
+      filterKey === "region"
+        ? value === "all"
+          ? "전체"
+          : REGION_LABELS[value] || value
+        : FILTER_LABELS[filterKey]?.[value] || value;
+    labelEl.textContent = label;
+    labelEl.toggleAttribute("data-is-default", value === "all");
+  });
+}
+
+// 국가 필터에 맞춰 지역 팝오버 옵션을 다시 그린다 (요구사항: 한국 고르면 한국 지역만)
+function renderRegionOptions(countryValue) {
+  const regionList = countryValue === "all" ? REGIONS : REGIONS_BY_COUNTRY[countryValue] || REGIONS;
+  const popover = document.getElementById("region-popover");
+
+  popover.innerHTML =
+    `<button class="chip is-active" data-value="all">전체</button>` +
+    regionList
+      .map((r) => `<button class="chip" data-value="${r}">${REGION_LABELS[r] || r}</button>`)
+      .join("");
+
+  // 국가를 바꿔서 지금 선택된 지역이 새 목록에 없으면 "전체"로 되돌린다
+  if (state.filters.region !== "all" && !regionList.includes(state.filters.region)) {
+    state.filters.region = "all";
+  }
 }
 
 // ------------------------------------------------------------

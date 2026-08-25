@@ -38,6 +38,54 @@ export async function createRestaurant(data) {
 }
 
 /**
+ * CSV 등에서 만든 restaurant 데이터 여러 건을 한 번에 등록한다.
+ * Firestore 배치 쓰기는 500건 제한이 있어 내부적으로 청크로 나눠 처리한다.
+ * @param {object[]} rows
+ * @param {(done: number, total: number) => void} [onProgress]
+ * @returns {Promise<{successCount: number, failedRows: {row: object, error: string}[]}>}
+ */
+export async function bulkCreateRestaurants(rows, onProgress) {
+  const db = await getDb();
+  if (!db) throw new Error("firestore-not-configured");
+
+  const { collection, doc, writeBatch } = await getFirestoreFns();
+  const CHUNK_SIZE = 400; // Firestore 배치 한도(500)보다 여유 있게
+  let successCount = 0;
+  const failedRows = [];
+  const now = new Date().toISOString();
+
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(db);
+
+    chunk.forEach((row) => {
+      try {
+        const ref = doc(collection(db, COLLECTIONS.restaurants));
+        batch.set(ref, {
+          ...row,
+          my: { ratingSum: 0, ratingCount: 0, memo: row.my?.memo || "" },
+          createdAt: now,
+          updatedAt: now,
+        });
+      } catch (err) {
+        failedRows.push({ row, error: String(err) });
+      }
+    });
+
+    try {
+      await batch.commit();
+      successCount += chunk.length;
+    } catch (err) {
+      chunk.forEach((row) => failedRows.push({ row, error: String(err) }));
+    }
+
+    onProgress?.(Math.min(i + CHUNK_SIZE, rows.length), rows.length);
+  }
+
+  return { successCount, failedRows };
+}
+
+/**
  * @param {string} restaurantId
  * @param {number} ratingValue - 1~5
  */

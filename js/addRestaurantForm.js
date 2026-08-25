@@ -2,8 +2,9 @@
 // "맛집 등록" 패널의 폼 UI와 제출 로직.
 // app.js에서 initAddRestaurantForm(...)로 한 번 초기화하고, open()/close()만 호출한다.
 
-import { CATEGORY_META, DAY_META, REGIONS, REGION_LABELS, NAV_PROVIDER_BY_COUNTRY } from "./constants.js";
+import { CATEGORY_META, DAY_META, REGIONS_BY_COUNTRY, REGION_LABELS, NAV_PROVIDER_BY_COUNTRY } from "./constants.js";
 import { createRestaurant } from "./restaurantWrite.js";
+import { geocodeAddress } from "./geocode.js";
 
 export function initAddRestaurantForm({ els, mapProvider, onCreated, showToast }) {
   let picking = false;
@@ -60,10 +61,6 @@ export function initAddRestaurantForm({ els, mapProvider, onCreated, showToast }
       .map(([key, meta]) => `<button type="button" class="chip-option" data-value="${key}">${meta.icon} ${meta.label}</button>`)
       .join("");
 
-    const regionOptions = REGIONS.map(
-      (r) => `<option value="${r}">${REGION_LABELS[r] || r}</option>`
-    ).join("");
-
     const dayChips = DAY_META.map(
       (d) => `<button type="button" class="chip-option day-chip" data-value="${d.key}">${d.label}</button>`
     ).join("");
@@ -84,8 +81,13 @@ export function initAddRestaurantForm({ els, mapProvider, onCreated, showToast }
         </div>
         <div class="field">
           <label class="field__label">지역</label>
-          <select name="region">${regionOptions}</select>
+          <select name="region" id="region-select"></select>
         </div>
+      </div>
+
+      <div class="field" id="custom-region-field" hidden>
+        <label class="field__label">지역 직접 입력</label>
+        <input type="text" name="customRegion" placeholder="목록에 없는 지역명을 입력하세요" />
       </div>
 
       <div class="field__row">
@@ -93,10 +95,15 @@ export function initAddRestaurantForm({ els, mapProvider, onCreated, showToast }
           <label class="field__label">동네 / 구</label>
           <input type="text" name="district" placeholder="예) Umeda, 성수동" />
         </div>
-        <div class="field">
-          <label class="field__label">주소</label>
-          <input type="text" name="address" placeholder="선택 입력" />
+      </div>
+
+      <div class="field">
+        <label class="field__label">주소</label>
+        <div class="geocode-row">
+          <input type="text" name="address" placeholder="예) 서울 마포구 합정동 123-4" />
+          <button type="button" id="geocode-btn" class="geocode-btn">📍 주소로 좌표 찾기</button>
         </div>
+        <p class="geocode-hint">OpenStreetMap 기반으로 대략적인 좌표를 찾아줘요. 정확도가 걱정되면 아래 "지도에서 위치 선택"으로 확인/보정하세요.</p>
       </div>
 
       <div class="field">
@@ -156,11 +163,20 @@ export function initAddRestaurantForm({ els, mapProvider, onCreated, showToast }
       <button type="submit" class="btn btn--primary add-form__submit">맛집 등록</button>
     `;
 
-    // 국가 바꾸면 외부 평점 provider 기본값도 맞춰준다
+    renderRegionSelect("KR");
+
+    // 국가 바꾸면 지역 목록 + 외부 평점 provider 기본값도 맞춰준다
     els.addForm.querySelector('[name="country"]').addEventListener("change", (e) => {
       els.addForm.querySelector('[name="provider"]').value = NAV_PROVIDER_BY_COUNTRY[e.target.value] || "google";
+      renderRegionSelect(e.target.value);
     });
     els.addForm.querySelector('[name="provider"]').value = NAV_PROVIDER_BY_COUNTRY.KR;
+
+    els.addForm.querySelector("#region-select").addEventListener("change", (e) => {
+      els.addForm.querySelector("#custom-region-field").hidden = e.target.value !== "etc";
+    });
+
+    els.addForm.querySelector("#geocode-btn").addEventListener("click", handleGeocode);
 
     // chip-select 토글 (단일: status / 다중: categories, days)
     els.addForm.querySelectorAll(".chip-select").forEach((group) => {
@@ -193,6 +209,42 @@ export function initAddRestaurantForm({ els, mapProvider, onCreated, showToast }
 
     els.addForm.addEventListener("submit", handleSubmit);
     renderHoursList();
+  }
+
+  // 국가에 맞는 지역만 select 옵션으로 보여준다 (한국 고르면 한국 지역만, 등)
+  function renderRegionSelect(country) {
+    const select = els.addForm.querySelector("#region-select");
+    const regions = REGIONS_BY_COUNTRY[country] || [];
+    select.innerHTML = regions
+      .map((r) => `<option value="${r}">${r === "etc" ? "기타 (직접입력)" : REGION_LABELS[r] || r}</option>`)
+      .join("");
+    els.addForm.querySelector("#custom-region-field").hidden = true;
+  }
+
+  async function handleGeocode() {
+    const addressInput = els.addForm.querySelector('[name="address"]');
+    const btn = els.addForm.querySelector("#geocode-btn");
+    const address = addressInput.value.trim();
+    if (!address) {
+      addressInput.focus();
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "찾는 중...";
+    try {
+      const { lat, lng } = await geocodeAddress(address);
+      els.addForm.querySelector('[name="latitude"]').value = lat.toFixed(6);
+      els.addForm.querySelector('[name="longitude"]').value = lng.toFixed(6);
+      mapProvider.setPickerMarker(lat, lng);
+      mapProvider.focusOn(lat, lng, 16);
+      showToast("좌표를 찾았어요. 지도에서 위치가 맞는지 확인해보세요.", 3000);
+    } catch (err) {
+      console.warn(err);
+      showToast("좌표를 찾지 못했어요. 주소를 더 구체적으로 입력하거나 지도에서 직접 선택해주세요.", 4000);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "📍 주소로 좌표 찾기";
+    }
   }
 
   function renderHoursList() {
@@ -248,7 +300,7 @@ export function initAddRestaurantForm({ els, mapProvider, onCreated, showToast }
     const data = {
       name,
       country: fd.get("country"),
-      region: fd.get("region"),
+      region: fd.get("region") === "etc" ? fd.get("customRegion")?.trim() || "etc" : fd.get("region"),
       district: fd.get("district")?.trim() || "",
       address: fd.get("address")?.trim() || "",
       latitude,
@@ -289,6 +341,7 @@ export function initAddRestaurantForm({ els, mapProvider, onCreated, showToast }
     els.addForm.reset();
     hoursEntries = [];
     renderHoursList();
+    renderRegionSelect("KR");
     els.addForm.querySelectorAll(".chip-option.is-on").forEach((b) => b.classList.remove("is-on"));
     els.addForm.querySelector('.chip-select--status .chip-option[data-value="want"]').classList.add("is-on");
     mapProvider.clearPickerMarker();

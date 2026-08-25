@@ -50,61 +50,77 @@
       <button id="add-restaurant-btn" class="icon-btn icon-btn--accent" type="button" title="맛집 등록">
         ➕ <span class="icon-btn__label">맛집 등록</span>
       </button>
+
+      <button id="csv-import-btn" class="icon-btn" type="button" title="CSV 일괄 등록">
+        📄 <span class="icon-btn__label">CSV 등록</span>
+      </button>
     </header>
 
     <!-- ============ 필터 바 ============ -->
+    <!-- 옆으로 늘어놓지 않고, 필터 종류 버튼(트리거) 5개만 한 줄에 두고
+         누르면 그 아래/화면에 팝오버가 떠서 옵션을 고르는 방식. -->
     <nav class="filterbar" id="filterbar" aria-label="맛집 필터">
 
-      <div class="filter-group" data-filter-group="country">
-        <button class="chip is-active" data-value="all">전체</button>
-        <button class="chip" data-value="KR">🇰🇷 한국</button>
-        <button class="chip" data-value="JP">🇯🇵 일본</button>
+      <div class="filter-item">
+        <button class="filter-trigger" type="button">
+          국가 <span class="filter-trigger__value" data-value-label>전체</span>
+        </button>
+        <div class="filter-popover" data-filter-group="country">
+          <button class="chip is-active" data-value="all">전체</button>
+          <button class="chip" data-value="KR">🇰🇷 한국</button>
+          <button class="chip" data-value="JP">🇯🇵 일본</button>
+        </div>
       </div>
 
-      <div class="filter-divider" aria-hidden="true"></div>
-
-      <div class="filter-group" data-filter-group="status">
-        <button class="chip is-active" data-value="all">상태 전체</button>
-        <button class="chip" data-value="want">🟡 가고싶은</button>
-        <button class="chip" data-value="visited">🟢 가본곳</button>
-        <button class="chip" data-value="avoid">🔴 피할곳</button>
+      <div class="filter-item">
+        <button class="filter-trigger" type="button">
+          상태 <span class="filter-trigger__value" data-value-label>전체</span>
+        </button>
+        <div class="filter-popover" data-filter-group="status">
+          <button class="chip is-active" data-value="all">전체</button>
+          <button class="chip" data-value="want">🟡 가고싶은</button>
+          <button class="chip" data-value="visited">🟢 가본곳</button>
+          <button class="chip" data-value="avoid">🔴 피할곳</button>
+        </div>
       </div>
 
-      <div class="filter-divider" aria-hidden="true"></div>
-
-      <div class="filter-group" data-filter-group="category">
-        <button class="chip is-active" data-value="all">음식 전체</button>
-        <button class="chip" data-value="sushi">🍣 스시</button>
-        <button class="chip" data-value="ramen">🍜 라멘</button>
-        <button class="chip" data-value="yakiniku">🥩 야키니쿠</button>
-        <button class="chip" data-value="izakaya">🍺 이자카야</button>
-        <button class="chip" data-value="curry">🍛 카레</button>
-        <button class="chip" data-value="cafe">☕ 카페</button>
-        <button class="chip" data-value="dessert">🍰 디저트</button>
-        <button class="chip" data-value="etc">기타</button>
+      <div class="filter-item">
+        <button class="filter-trigger" type="button">
+          음식 <span class="filter-trigger__value" data-value-label>전체</span>
+        </button>
+        <div class="filter-popover" data-filter-group="category">
+          <button class="chip is-active" data-value="all">전체</button>
+          <button class="chip" data-value="sushi">🍣 스시</button>
+          <button class="chip" data-value="ramen">🍜 라멘</button>
+          <button class="chip" data-value="yakiniku">🥩 야키니쿠</button>
+          <button class="chip" data-value="izakaya">🍺 이자카야</button>
+          <button class="chip" data-value="curry">🍛 카레</button>
+          <button class="chip" data-value="cafe">☕ 카페</button>
+          <button class="chip" data-value="dessert">🍰 디저트</button>
+          <button class="chip" data-value="etc">기타</button>
+        </div>
       </div>
 
-      <div class="filter-divider" aria-hidden="true"></div>
-
-      <div class="filter-group" data-filter-group="region">
-        <button class="chip is-active" data-value="all">지역 전체</button>
-        <button class="chip" data-value="Seoul">서울</button>
-        <button class="chip" data-value="Busan">부산</button>
-        <button class="chip" data-value="Jeju">제주</button>
-        <button class="chip" data-value="Tokyo">도쿄</button>
-        <button class="chip" data-value="Osaka">오사카</button>
-        <button class="chip" data-value="Kyoto">교토</button>
-        <button class="chip" data-value="Fukuoka">후쿠오카</button>
+      <div class="filter-item">
+        <button class="filter-trigger" type="button">
+          지역 <span class="filter-trigger__value" data-value-label>전체</span>
+        </button>
+        <div class="filter-popover" data-filter-group="region" id="region-popover">
+          <!-- 국가 필터에 따라 app.js가 옵션을 다시 그림 -->
+        </div>
       </div>
 
-      <div class="filter-divider" aria-hidden="true"></div>
-
-      <div class="filter-group" data-filter-group="nearby">
-        <button class="chip is-active" data-value="all">거리 전체</button>
-        <button class="chip" data-value="500">500m</button>
-        <button class="chip" data-value="1000">1km</button>
-        <button class="chip" data-value="3000">3km</button>
-        <button class="chip" data-value="5000">5km</button>
+      <div class="filter-item">
+        <button class="filter-trigger" type="button">
+          거리 <span class="filter-trigger__value" data-value-label>전체</span>
+        </button>
+        <div class="filter-popover" data-filter-group="nearby">
+          <button class="chip is-active" data-value="all">전체</button>
+          <button class="chip" data-value="500">500m</button>
+          <button class="chip" data-value="1000">1km</button>
+          <button class="chip" data-value="3000">3km</button>
+          <button class="chip" data-value="5000">5km</button>
+        </div>
       </div>
 
     </nav>
@@ -149,6 +165,13 @@
       </div>
     </aside>
     <div id="add-panel-backdrop" class="detail-backdrop" hidden></div>
+
+    <!-- ============ CSV 일괄 등록 패널 ============ -->
+    <aside id="csv-panel" class="detail-panel add-panel" aria-label="CSV 일괄 등록" hidden>
+      <button id="csv-panel-close" class="detail-panel__close" type="button" aria-label="닫기">✕</button>
+      <div class="detail-panel__content" id="csv-panel-content"></div>
+    </aside>
+    <div id="csv-panel-backdrop" class="detail-backdrop" hidden></div>
 
     <!-- ============ 토스트 (위치 권한 거부 등 안내) ============ -->
     <div id="toast" class="toast" hidden></div>

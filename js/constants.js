@@ -46,6 +46,13 @@ export const REGIONS = [
   "etc",
 ];
 
+// 국가를 고르면 그 국가의 지역만 보여주기 위한 목록.
+// 여기 없는 지역은 등록 폼에서 "기타(직접입력)"으로 자유 입력할 수 있다.
+export const REGIONS_BY_COUNTRY = {
+  KR: ["Seoul", "Busan", "Jeju", "etc"],
+  JP: ["Tokyo", "Osaka", "Kyoto", "Fukuoka", "etc"],
+};
+
 export const REGION_LABELS = {
   Seoul: "서울",
   Busan: "부산",

@@ -54,6 +54,9 @@
 //   setPickerMarker(lat, lng): void
 //   clearPickerMarker(): void
 //     - 맛집 등록 폼에서 좌표를 고르는 동안 보여줄 임시 마커.
+//
+//   setLabelLanguages(preset): void
+//     - 지도에 표시되는 지명 라벨의 언어를 바꾼다. preset: "ko" | "en-ja-ko" | "default"
 // }
 // ------------------------------------------------------------
 
