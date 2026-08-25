@@ -12,12 +12,12 @@
 // 반드시 firestore.rules를 배포한 뒤에 이 앱을 공개하세요.
 
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyDTlxawFKKn-4kDaNr4GojvcBsp55_798o",
+  authDomain: "mapdb-40646.firebaseapp.com",
+  projectId: "mapdb-40646",
+  storageBucket: "mapdb-40646.firebasestorage.app",
+  messagingSenderId: "913340661906",
+  appId: "1:913340661906:web:254d1cc2dec4c66150264b"
 };
 
 // 앱 전역에서 사용할 Firestore 컬렉션 이름을 한 곳에 모아둡니다.
