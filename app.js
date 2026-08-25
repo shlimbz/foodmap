@@ -83,8 +83,6 @@ const els = {
 // ------------------------------------------------------------
 // 초기화
 // ------------------------------------------------------------
-init();
-
 async function init() {
   // 지도 provider는 여기서 딱 한 곳만 이름으로 지정한다.
   // 다른 타일 서비스로 교체할 때는 이 문자열만 바꾸면 된다 (js/mapProvider.js 참고).
@@ -791,3 +789,8 @@ function escapeHtml(str) {
 function cssEscape(str) {
   return window.CSS?.escape ? window.CSS.escape(str) : str.replace(/"/g, '\\"');
 }
+
+// 모든 함수/상수 선언이 끝난 뒤 마지막에 실행한다.
+// (const는 호이스팅되지 않으므로, 파일 앞쪽에서 init()을 호출하면
+//  아래쪽에 있는 const 선언을 참조하는 시점에 TDZ 에러가 날 수 있다.)
+init();
