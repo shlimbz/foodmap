@@ -46,6 +46,10 @@
       <button id="locate-btn" class="icon-btn" type="button" title="내 위치 찾기">
         📍 <span class="icon-btn__label">내 위치</span>
       </button>
+
+      <button id="add-restaurant-btn" class="icon-btn icon-btn--accent" type="button" title="맛집 등록">
+        ➕ <span class="icon-btn__label">맛집 등록</span>
+      </button>
     </header>
 
     <!-- ============ 필터 바 ============ -->
@@ -106,14 +110,20 @@
     </nav>
 
     <!-- ============ 메인: 지도 + 리스트 ============ -->
+    <!-- 데스크탑: 좌우 60/40 분할. 모바일: 지도가 배경 전체를 채우고,
+         리스트는 아래에서 드래그로 접고 펼 수 있는 바텀시트로 겹쳐진다. -->
     <main class="main" id="main">
 
       <section class="map-pane" id="map-pane" aria-label="지도">
         <div id="map"></div>
         <div id="map-error" class="pane-message" hidden></div>
+        <div id="picking-banner" class="picking-banner" hidden>📍 지도를 탭해서 위치를 선택하세요</div>
       </section>
 
-      <section class="list-pane" id="list-pane" aria-label="맛집 리스트">
+      <section class="list-pane" id="list-pane" aria-label="맛집 리스트" data-sheet-state="half">
+        <button class="list-pane__handle" id="sheet-handle" type="button" aria-label="리스트 크기 조절">
+          <span class="list-pane__handle-bar"></span>
+        </button>
         <div class="list-pane__header">
           <span id="result-count">0개의 맛집</span>
         </div>
@@ -123,18 +133,22 @@
 
     </main>
 
-    <!-- ============ 모바일 지도/리스트 전환 ============ -->
-    <div class="mobile-switch" id="mobile-switch">
-      <button class="mobile-switch__btn is-active" data-view="map">🗺️ 지도</button>
-      <button class="mobile-switch__btn" data-view="list">📋 리스트</button>
-    </div>
-
     <!-- ============ 상세 정보 패널 ============ -->
     <aside id="detail-panel" class="detail-panel" aria-label="맛집 상세 정보" hidden>
       <button id="detail-close" class="detail-panel__close" type="button" aria-label="닫기">✕</button>
       <div id="detail-content" class="detail-panel__content"></div>
     </aside>
     <div id="detail-backdrop" class="detail-backdrop" hidden></div>
+
+    <!-- ============ 맛집 등록 패널 ============ -->
+    <aside id="add-panel" class="detail-panel add-panel" aria-label="맛집 등록" hidden>
+      <button id="add-panel-close" class="detail-panel__close" type="button" aria-label="닫기">✕</button>
+      <div class="detail-panel__content">
+        <p class="add-panel__title">🍽️ 맛집 등록</p>
+        <form id="add-restaurant-form" class="add-form"></form>
+      </div>
+    </aside>
+    <div id="add-panel-backdrop" class="detail-backdrop" hidden></div>
 
     <!-- ============ 토스트 (위치 권한 거부 등 안내) ============ -->
     <div id="toast" class="toast" hidden></div>

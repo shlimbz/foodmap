@@ -44,6 +44,7 @@
 html, body {
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
@@ -139,6 +140,12 @@ button {
   border-color: var(--stamp-teal);
   color: #fff;
 }
+.icon-btn--accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.icon-btn--accent:hover { background: var(--accent); filter: brightness(1.06); }
 
 /* ============================================================
    필터 바 — 티켓 스텁처럼 가로로 늘어선 chip 그룹
@@ -147,13 +154,14 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 20px;
+  padding: 8px 20px;
   background: var(--paper-raised);
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
   scrollbar-width: thin;
   position: relative;
   z-index: 15;
+  flex-shrink: 0;
 }
 .filterbar::-webkit-scrollbar { height: 6px; }
 .filterbar::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
@@ -230,6 +238,21 @@ button {
   color: var(--ink-soft);
   font-size: 13.5px;
   line-height: 1.6;
+}
+
+.picking-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  z-index: 25;
+  box-shadow: 0 8px 20px rgba(23, 27, 34, 0.3);
 }
 
 /* ============================================================
@@ -364,6 +387,16 @@ button {
   box-shadow: 0 0 0 2px var(--stamp-teal);
 }
 
+.picker-marker {
+  font-size: 30px;
+  filter: drop-shadow(0 3px 4px rgba(23, 27, 34, 0.4));
+  animation: picker-bounce 0.6s ease-in-out infinite alternate;
+}
+@keyframes picker-bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-6px); }
+}
+
 /* ============================================================
    상세 정보 패널 — 오른쪽 슬라이드 패널 (데스크탑) / 바텀시트 (모바일)
    ============================================================ */
@@ -482,6 +515,43 @@ button {
   font-weight: 700;
 }
 
+.rate-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 10px 0 4px;
+  background: var(--paper);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+}
+.rate-form__label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+.rate-form__stars {
+  display: flex;
+  gap: 2px;
+}
+.rate-star {
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: var(--status-want);
+  line-height: 1;
+  padding: 2px;
+}
+.rate-star.is-on { color: var(--status-want); }
+.rate-form__submit {
+  flex: none;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  margin-left: auto;
+}
+.rate-form__submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .detail-section {
   border-top: 1px dashed var(--line-strong);
   padding: 14px 0;
@@ -542,31 +612,141 @@ button {
 .btn--ghost:hover { background: var(--paper); }
 
 /* ============================================================
-   모바일 지도/리스트 전환 바
+   맛집 등록 패널 / 폼
    ============================================================ */
-.mobile-switch {
-  display: none;
-  position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--ink);
-  border-radius: 999px;
-  padding: 4px;
-  gap: 2px;
-  z-index: 30;
-  box-shadow: 0 8px 24px rgba(23, 27, 34, 0.35);
+.add-panel__title {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 16px;
 }
-.mobile-switch__btn {
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  padding: 9px 18px;
+
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.field__label .required { color: var(--accent); }
+.field__row {
+  display: flex;
+  gap: 8px;
+}
+.field__row > * { flex: 1; min-width: 0; }
+
+.field input[type="text"],
+.field input[type="number"],
+.field input[type="url"],
+.field input[type="time"],
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  font-size: 13.5px;
+  font-family: inherit;
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+.field textarea { resize: vertical; min-height: 60px; }
+
+.chip-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip-select .chip-option {
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
   border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.chip-select .chip-option.is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.chip-select--status .chip-option[data-value="want"].is-on { background: var(--status-want); border-color: var(--status-want); }
+.chip-select--status .chip-option[data-value="visited"].is-on { background: var(--status-visited); border-color: var(--status-visited); }
+.chip-select--status .chip-option[data-value="avoid"].is-on { background: var(--status-avoid); border-color: var(--status-avoid); }
+
+.pick-location-btn {
+  align-self: flex-start;
+  border: 1px dashed var(--line-strong);
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--stamp-teal);
+}
+.pick-location-btn.is-active { background: var(--stamp-teal-soft); border-color: var(--stamp-teal); }
+
+.hours-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.hours-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+.hours-list__remove {
+  border: none;
+  background: none;
+  color: var(--status-avoid);
   font-size: 13px;
   font-weight: 700;
+  padding: 2px 6px;
 }
-.mobile-switch__btn.is-active { background: #fff; color: var(--ink); }
+
+.add-form__error {
+  font-size: 12.5px;
+  color: var(--status-avoid);
+  font-weight: 600;
+}
+.add-form__submit { margin-top: 4px; }
+
+/* ============================================================
+   리스트 패널 상단 드래그 핸들 (모바일 바텀시트에서만 보임)
+   ============================================================ */
+.list-pane__handle {
+  display: none;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 10px 0 6px;
+  flex-shrink: 0;
+  touch-action: none;
+}
+.list-pane__handle-bar {
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--line-strong);
+}
 
 /* ============================================================
    토스트
@@ -589,28 +769,47 @@ button {
 }
 
 /* ============================================================
-   반응형 — 모바일: 지도/리스트 세로 전환
+   반응형 — 모바일: 지도가 배경 전체, 리스트는 드래그 바텀시트
    ============================================================ */
 @media (max-width: 860px) {
   .topbar__search { max-width: none; }
   .icon-btn__label { display: none; }
 
   .main {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
+    display: block;
+    position: relative;
+    height: 100%;
   }
-  .map-pane, .list-pane {
-    grid-column: 1;
-    grid-row: 1;
+
+  .map-pane {
+    position: absolute;
+    inset: 0;
   }
-  .list-pane { border-left: none; }
 
-  .main[data-mobile-view="map"] .list-pane { display: none; }
-  .main[data-mobile-view="list"] .map-pane { display: none; }
+  .list-pane {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-left: none;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 24px rgba(23, 27, 34, 0.18);
+    height: 86dvh;
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    /* --sheet-y: 시트를 얼마나 아래로 내릴지(px). JS가 드래그/상태에 따라 갱신 */
+    transform: translateY(var(--sheet-y, calc(86dvh - 44vh)));
+    touch-action: none;
+  }
+  .list-pane.is-dragging { transition: none; }
+  .list-pane[data-sheet-state="collapsed"] { --sheet-y: calc(86dvh - 96px); }
+  .list-pane[data-sheet-state="half"] { --sheet-y: calc(86dvh - 44vh); }
+  .list-pane[data-sheet-state="full"] { --sheet-y: 0px; }
 
-  .mobile-switch { display: flex; }
+  .list-pane__handle { display: block; }
+  .restaurant-list { touch-action: pan-y; }
 
-  .detail-panel {
+  .detail-panel,
+  .add-panel {
     top: auto;
     bottom: 0;
     width: 100%;

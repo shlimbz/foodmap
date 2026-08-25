@@ -15,7 +15,9 @@
 
 import { getCategoryMeta, getStatusMeta } from "../constants.js";
 
-const OPENFREEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+// positron 스타일: POI/3D 건물 레이어가 없는 가벼운 2D 스타일이라
+// liberty(기본) 대비 로딩이 빠르고, 굳이 필요 없는 "3D 느낌"도 없다.
+const OPENFREEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 export function createLeafletOpenFreeMapProvider() {
   /** @type {L.Map | null} */
@@ -24,6 +26,8 @@ export function createLeafletOpenFreeMapProvider() {
   const markers = new Map();
   /** @type {L.Marker | null} */
   let userMarker = null;
+  /** @type {L.Marker | null} */
+  let pickerMarker = null;
   let selectedId = null;
 
   function buildDivIcon(restaurant, isSelected) {
@@ -67,7 +71,16 @@ export function createLeafletOpenFreeMapProvider() {
         style: OPENFREEMAP_STYLE_URL,
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, tiles by <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>',
+        // 회전/기울기(pitch)를 막아서 "3D로 기울어지는" 느낌을 원천 차단하고,
+        // 불필요한 재계산을 줄여 체감 속도를 높인다.
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
+        touchZoomRotate: { rotate: false },
+        fadeDuration: 0,
       }).addTo(map);
+
+      map.touchZoomRotate?.disableRotate?.();
     },
 
     addOrUpdateMarker(restaurant, { onClick } = {}) {
@@ -151,7 +164,32 @@ export function createLeafletOpenFreeMapProvider() {
     },
 
     onMapClick(handler) {
-      map?.on("click", () => handler());
+      map?.on("click", (e) => handler({ lat: e.latlng.lat, lng: e.latlng.lng }));
+    },
+
+    // 맛집 등록 폼에서 "지도에서 위치 선택"할 때 쓰는 임시 마커.
+    setPickerMarker(lat, lng) {
+      if (!map) return;
+      if (!pickerMarker) {
+        pickerMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            className: "",
+            html: `<div class="picker-marker">📍</div>`,
+            iconSize: [34, 34],
+            iconAnchor: [17, 34],
+          }),
+          interactive: false,
+        }).addTo(map);
+      } else {
+        pickerMarker.setLatLng([lat, lng]);
+      }
+    },
+
+    clearPickerMarker() {
+      if (pickerMarker) {
+        map?.removeLayer(pickerMarker);
+        pickerMarker = null;
+      }
     },
   };
 }

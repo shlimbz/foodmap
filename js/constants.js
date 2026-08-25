@@ -64,3 +64,14 @@ export const NAV_PROVIDER_BY_COUNTRY = {
   KR: "naver",
   JP: "google",
 };
+
+// 맛집 등록 폼의 영업시간 요일 선택에 사용
+export const DAY_META = [
+  { key: "mon", label: "월" },
+  { key: "tue", label: "화" },
+  { key: "wed", label: "수" },
+  { key: "thu", label: "목" },
+  { key: "fri", label: "금" },
+  { key: "sat", label: "토" },
+  { key: "sun", label: "일" },
+];
