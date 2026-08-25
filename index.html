@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>미식장 — 나만의 맛집 지도</title>
+<meta name="description" content="한국·일본 맛집을 지도에서 관리하는 개인용 맛집 지도" />
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- MapLibre GL (OpenFreeMap의 벡터 스타일을 Leaflet 위에 렌더링하기 위해 필요) -->
+<!-- leaflet-maplibre-gl 0.0.x는 전역 스크립트(UMD) 방식과 호환되는 마지막 버전대라
+     별도 번들러/importmap 없이 <script> 태그만으로 GitHub Pages에서 바로 동작한다. -->
+<link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- ============ 상단 헤더: 로고 + 검색 + 위치 버튼 ============ -->
+    <header class="topbar">
+      <div class="topbar__brand">
+        <span class="topbar__logo" aria-hidden="true">🍜</span>
+        <span class="topbar__title">미식장</span>
+      </div>
+
+      <div class="topbar__search">
+        <span class="topbar__search-icon" aria-hidden="true">🔍</span>
+        <input
+          id="search-input"
+          type="search"
+          placeholder="식당 이름, 지역, 주소로 검색"
+          autocomplete="off"
+        />
+      </div>
+
+      <button id="locate-btn" class="icon-btn" type="button" title="내 위치 찾기">
+        📍 <span class="icon-btn__label">내 위치</span>
+      </button>
+    </header>
+
+    <!-- ============ 필터 바 ============ -->
+    <nav class="filterbar" id="filterbar" aria-label="맛집 필터">
+
+      <div class="filter-group" data-filter-group="country">
+        <button class="chip is-active" data-value="all">전체</button>
+        <button class="chip" data-value="KR">🇰🇷 한국</button>
+        <button class="chip" data-value="JP">🇯🇵 일본</button>
+      </div>
+
+      <div class="filter-divider" aria-hidden="true"></div>
+
+      <div class="filter-group" data-filter-group="status">
+        <button class="chip is-active" data-value="all">상태 전체</button>
+        <button class="chip" data-value="want">🟡 가고싶은</button>
+        <button class="chip" data-value="visited">🟢 가본곳</button>
+        <button class="chip" data-value="avoid">🔴 피할곳</button>
+      </div>
+
+      <div class="filter-divider" aria-hidden="true"></div>
+
+      <div class="filter-group" data-filter-group="category">
+        <button class="chip is-active" data-value="all">음식 전체</button>
+        <button class="chip" data-value="sushi">🍣 스시</button>
+        <button class="chip" data-value="ramen">🍜 라멘</button>
+        <button class="chip" data-value="yakiniku">🥩 야키니쿠</button>
+        <button class="chip" data-value="izakaya">🍺 이자카야</button>
+        <button class="chip" data-value="curry">🍛 카레</button>
+        <button class="chip" data-value="cafe">☕ 카페</button>
+        <button class="chip" data-value="dessert">🍰 디저트</button>
+        <button class="chip" data-value="etc">기타</button>
+      </div>
+
+      <div class="filter-divider" aria-hidden="true"></div>
+
+      <div class="filter-group" data-filter-group="region">
+        <button class="chip is-active" data-value="all">지역 전체</button>
+        <button class="chip" data-value="Seoul">서울</button>
+        <button class="chip" data-value="Busan">부산</button>
+        <button class="chip" data-value="Jeju">제주</button>
+        <button class="chip" data-value="Tokyo">도쿄</button>
+        <button class="chip" data-value="Osaka">오사카</button>
+        <button class="chip" data-value="Kyoto">교토</button>
+        <button class="chip" data-value="Fukuoka">후쿠오카</button>
+      </div>
+
+      <div class="filter-divider" aria-hidden="true"></div>
+
+      <div class="filter-group" data-filter-group="nearby">
+        <button class="chip is-active" data-value="all">거리 전체</button>
+        <button class="chip" data-value="500">500m</button>
+        <button class="chip" data-value="1000">1km</button>
+        <button class="chip" data-value="3000">3km</button>
+        <button class="chip" data-value="5000">5km</button>
+      </div>
+
+    </nav>
+
+    <!-- ============ 메인: 지도 + 리스트 ============ -->
+    <main class="main" id="main">
+
+      <section class="map-pane" id="map-pane" aria-label="지도">
+        <div id="map"></div>
+        <div id="map-error" class="pane-message" hidden></div>
+      </section>
+
+      <section class="list-pane" id="list-pane" aria-label="맛집 리스트">
+        <div class="list-pane__header">
+          <span id="result-count">0개의 맛집</span>
+        </div>
+        <ul id="restaurant-list" class="restaurant-list"></ul>
+        <div id="list-empty" class="pane-message" hidden>조건에 맞는 맛집이 없어요.</div>
+      </section>
+
+    </main>
+
+    <!-- ============ 모바일 지도/리스트 전환 ============ -->
+    <div class="mobile-switch" id="mobile-switch">
+      <button class="mobile-switch__btn is-active" data-view="map">🗺️ 지도</button>
+      <button class="mobile-switch__btn" data-view="list">📋 리스트</button>
+    </div>
+
+    <!-- ============ 상세 정보 패널 ============ -->
+    <aside id="detail-panel" class="detail-panel" aria-label="맛집 상세 정보" hidden>
+      <button id="detail-close" class="detail-panel__close" type="button" aria-label="닫기">✕</button>
+      <div id="detail-content" class="detail-panel__content"></div>
+    </aside>
+    <div id="detail-backdrop" class="detail-backdrop" hidden></div>
+
+    <!-- ============ 토스트 (위치 권한 거부 등 안내) ============ -->
+    <div id="toast" class="toast" hidden></div>
+
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

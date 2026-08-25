@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// ============================================================
+// Firestore 보안 규칙
+// ============================================================
+// 역할 구분 (요구사항 21):
+//   ADMIN  - restaurants 컬렉션 추가/수정/삭제 (맛집 데이터 자체를 관리)
+//   MEMBER - restaurants는 읽기만 가능 / 자신의 개인 평가·메모(myRatings)만 쓰기 가능
+//
+// ADMIN 여부는 Firebase Authentication의 Custom Claim(admin: true)으로 판별한다.
+// Custom Claim 설정 방법은 README.md의 "Firebase 초기 설정" 항목을 참고할 것.
+//
+// 주의: 이 규칙을 배포하지 않으면 기본값(모든 접근 거부 또는 완전 공개)이 적용되어
+// 위험할 수 있으므로, Firestore 콘솔 또는 `firebase deploy --only firestore:rules`로
+// 반드시 이 파일을 배포해야 한다.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- 맛집 데이터: 누구나 읽기 가능, ADMIN만 쓰기 가능 ----
+    match /restaurants/{restaurantId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // ---- 개인 평가/메모: 로그인한 본인 데이터만 읽고 쓸 수 있음 ----
+    // 문서 ID는 `${uid}_${restaurantId}` 형식을 권장 (한 유저-한 맛집 당 1개 문서).
+    // 문서 필드에는 반드시 uid, restaurantId, rating, memo, updatedAt 등을 포함시킨다.
+    match /myRatings/{ratingId} {
+      allow read: if request.auth != null
+                   && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+                     && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null
+                              && resource.data.uid == request.auth.uid;
+    }
+
+    // 그 외 모든 컬렉션은 기본적으로 접근을 막는다.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

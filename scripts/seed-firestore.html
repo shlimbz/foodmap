@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>Firestore 시드 (개발용, 배포 X)</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+  button { padding: 10px 18px; font-size: 14px; cursor: pointer; }
+  pre { background: #f4f4f4; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 12px; }
+  .warn { color: #a33; font-weight: bold; }
+</style>
+</head>
+<body>
+  <h1>Firestore 테스트 데이터 시드</h1>
+  <p>
+    이 페이지는 <code>js/testData.js</code>에 있는 12개의 테스트 맛집 데이터를
+    Firestore <code>restaurants</code> 컬렉션에 한 번 밀어 넣기 위한 개발용 도구입니다.
+  </p>
+  <p class="warn">
+    ⚠️ 이 파일은 GitHub Pages에 배포하지 마세요. 로컬에서 1회 실행 후 삭제하거나
+    비공개로 보관하세요. 실행하려면 먼저 firestore.rules에서 본인 계정에
+    admin 권한을 부여했는지 확인하세요 (README.md 참고).
+  </p>
+  <button id="seed-btn">restaurants 컬렉션에 테스트 데이터 쓰기</button>
+  <pre id="log">대기 중...</pre>
+
+  <script type="module">
+    import { firebaseConfig, COLLECTIONS } from "../firebase-config.js";
+    import { TEST_RESTAURANTS } from "../js/testData.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const log = document.getElementById("log");
+    const btn = document.getElementById("seed-btn");
+
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      log.textContent = "";
+
+      try {
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        for (const restaurant of TEST_RESTAURANTS) {
+          const { id, ...data } = restaurant;
+          await setDoc(doc(db, COLLECTIONS.restaurants, id), {
+            ...data,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          log.textContent += `✅ ${id} (${restaurant.name}) 저장 완료\n`;
+        }
+
+        log.textContent += `\n총 ${TEST_RESTAURANTS.length}개 문서 저장 완료.`;
+      } catch (err) {
+        log.textContent += `\n❌ 오류: ${err.message}`;
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
