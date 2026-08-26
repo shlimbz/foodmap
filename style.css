@@ -254,12 +254,18 @@ button {
   grid-template-columns: 60% 40%;
   min-height: 0;
   position: relative;
+  /* Leaflet은 내부적으로 z-index를 최대 1000까지 쓴다(컨트롤/팝업/마커 pane).
+     .main이 position만 있고 z-index가 없으면 "stacking context"가 안 생겨서
+     그 값들이 그대로 새어나가 리스트/등록 패널/필터 팝오버 위를 덮어버린다.
+     z-index를 명시해서 지도를 이 박스 안에 확실히 가둔다. */
+  z-index: 0;
 }
 
 .map-pane {
   position: relative;
   min-height: 0;
   background: #E4E4DC;
+  z-index: 0; /* 이중 안전장치: 여기서도 한 번 더 가둔다 */
 }
 #map { position: absolute; inset: 0; }
 
@@ -929,6 +935,7 @@ button {
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 1; /* map-pane보다 위에 확실히 오도록 */
     border-left: none;
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -8px 24px rgba(23, 27, 34, 0.18);
