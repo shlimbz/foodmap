@@ -85,6 +85,37 @@ export async function bulkCreateRestaurants(rows, onProgress) {
   return { successCount, failedRows };
 }
 
+/** 관리자 페이지 전용: restaurants 컬렉션 전체 조회 */
+export async function fetchAllRestaurants() {
+  const db = await getDb();
+  if (!db) return [];
+  const { collection, getDocs } = await getFirestoreFns();
+  const snap = await getDocs(collection(db, COLLECTIONS.restaurants));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * 관리자 페이지 전용: 맛집 문서를 통째로 수정한다 (이름/좌표/상태 등).
+ * my.ratingSum/ratingCount(사용자들이 남긴 평점)는 건드리지 않는다.
+ */
+export async function updateRestaurant(id, data) {
+  const db = await getDb();
+  if (!db) throw new Error("firestore-not-configured");
+  const { doc, updateDoc } = await getFirestoreFns();
+  await updateDoc(doc(db, COLLECTIONS.restaurants, id), {
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/** 관리자 페이지 전용: 맛집 삭제 (테스트 데이터 정리 등) */
+export async function deleteRestaurant(id) {
+  const db = await getDb();
+  if (!db) throw new Error("firestore-not-configured");
+  const { doc, deleteDoc } = await getFirestoreFns();
+  await deleteDoc(doc(db, COLLECTIONS.restaurants, id));
+}
+
 /**
  * @param {string} restaurantId
  * @param {number} ratingValue - 1~5

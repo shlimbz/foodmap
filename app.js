@@ -27,6 +27,8 @@ import { buildDirectionsLinks, getExternalMapUrl } from "./js/directions.js";
 import { submitRating } from "./js/restaurantWrite.js";
 import { initAddRestaurantForm } from "./js/addRestaurantForm.js";
 import { initCsvImportForm } from "./js/csvImportForm.js";
+import { applyCustomRegions, applyCustomCategories } from "./js/taxonomyStore.js";
+import { fetchCustomRegions, fetchCustomCategories } from "./js/taxonomyWrite.js";
 import { TEST_RESTAURANTS } from "./js/testData.js";
 
 // 기본 시작 위치: 사용자 위치를 못 가져오면 여의도역 기준으로 지도를 띄운다.
@@ -88,6 +90,12 @@ async function init() {
   // 다른 타일 서비스로 교체할 때는 이 문자열만 바꾸면 된다 (js/mapProvider.js 참고).
   mapProvider = createMapProvider("leaflet-openfreemap");
 
+  // 관리자가 추가한 커스텀 지역/음식 태그를 불러온다. 이게 있어야 필터/등록 폼의
+  // 옵션 목록이 완전해지지만, 네트워크가 느려도 버튼이 안 눌리는 일이 없도록
+  // 최대 1.5초까지만 기다리고 그 이후엔 기본값(코드에 있는 목록)으로 우선 진행한다.
+  const taxonomyPromise = loadTaxonomy();
+  await Promise.race([taxonomyPromise, new Promise((r) => setTimeout(r, 1500))]);
+
   // 버튼/필터/검색 등 UI는 지도 로딩을 절대 기다리지 않는다.
   // (예전엔 지도 초기화가 끝나야 "맛집 등록" 버튼 등이 눌리기 시작해서,
   //  모바일에서 지도가 느리면 버튼이 한동안 반응 없는 것처럼 보였다.)
@@ -121,8 +129,26 @@ async function init() {
   await loadRestaurants();
   renderAll();
 
+  // 위에서 1.5초 타임아웃으로 넘어갔을 경우를 대비해, 커스텀 지역/태그가
+  // 늦게 도착하면 필터 옵션과 라벨을 한 번 더 최신화한다.
+  taxonomyPromise.then(() => {
+    renderRegionOptions(state.filters.country);
+    updateFilterTriggerLabels();
+  });
+
   // 지도는 별도로(백그라운드에서) 초기화한다. await 하지 않음.
   initMap();
+}
+
+async function loadTaxonomy() {
+  if (!isFirebaseConfigured()) return;
+  try {
+    const [regions, categories] = await Promise.all([fetchCustomRegions(), fetchCustomCategories()]);
+    applyCustomRegions(regions);
+    applyCustomCategories(categories);
+  } catch (err) {
+    console.warn("커스텀 지역/음식 태그 로드 실패 (기본값으로 계속 진행):", err);
+  }
 }
 
 async function initMap() {
@@ -140,7 +166,8 @@ async function initMap() {
   }
 
   mapProvider.onMapClick(() => closeDetailPanel());
-  applyLabelLanguage(); // 현재 국가 필터에 맞는 지명 언어 적용
+  mapProvider.onMapMove(({ lng }) => applyLabelLanguageForLng(lng));
+  applyLabelLanguageForLng(YEOUIDO_STATION.lng); // 초기 위치(여의도) 기준으로 한 번 적용
 
   // 지도가 늦게 준비됐을 수 있으니, 이미 계산해둔 필터 결과로 마커를 다시 채워넣는다.
   renderMarkers(getFilteredRestaurants());
@@ -149,14 +176,14 @@ async function initMap() {
   attemptInitialLocate();
 }
 
-// 국가 필터에 맞춰 지도 라벨 언어를 바꾼다.
-// - 한국만 볼 때: 한국어만
-// - 일본만 볼 때: 영어 + 일본어 + 한국어 3줄
-// - 전체 볼 때: 기본(로마자+현지어 2줄)
-function applyLabelLanguage() {
-  const preset =
-    state.filters.country === "KR" ? "ko" : state.filters.country === "JP" ? "en-ja-ko" : "default";
-  mapProvider.setLabelLanguages?.(preset);
+// 지도 중심의 경도를 보고 "지금 한국을 보고 있는지 일본을 보고 있는지"를 대략 판단해
+// 지명 라벨 언어를 바꾼다 (필터가 아니라 실제 보고 있는 위치 기준).
+// - 한국 쪽(경도 129.5° 서쪽): 한국어만
+// - 일본 쪽(경도 129.5° 동쪽): 영어 + 일본어 + 한국어 3줄
+// 후쿠오카(약 130.4)는 일본, 부산(약 129.0)·제주(약 126.5)는 한국으로 정확히 갈리는 경계값.
+const JP_LABEL_LONGITUDE_THRESHOLD = 129.5;
+function applyLabelLanguageForLng(lng) {
+  mapProvider.setLabelLanguages?.(lng >= JP_LABEL_LONGITUDE_THRESHOLD ? "en-ja-ko" : "ko");
 }
 
 async function attemptInitialLocate() {
@@ -574,7 +601,6 @@ function setupFilterBar() {
 
     if (filterKey === "country") {
       renderRegionOptions(value);
-      applyLabelLanguage();
     }
 
     updateFilterTriggerLabels();

@@ -15,9 +15,10 @@
 
 import { getCategoryMeta, getStatusMeta } from "../constants.js";
 
-// positron 스타일: POI/3D 건물 레이어가 없는 가벼운 2D 스타일이라
-// liberty(기본) 대비 로딩이 빠르고, 굳이 필요 없는 "3D 느낌"도 없다.
-const OPENFREEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+// bright 스타일: 색이 있는(초록 녹지/파란 수역/도로 색 구분) 2D 스타일.
+// positron(무채색)에서 "색 있는 지도로 해달라"는 요청에 맞춰 교체했다.
+// liberty처럼 3D 건물 레이어를 쓰지 않아, 회전/기울기를 막아둔 것과 궁합이 좋다.
+const OPENFREEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
 
 // 지명 라벨에 어떤 언어 필드를 몇 줄로 보여줄지 (OpenMapTiles 스키마 기준).
 // 작은 지명은 name:en/name:ja/name:ko 데이터 자체가 없을 수 있어,
@@ -29,7 +30,6 @@ const LABEL_LANGUAGE_PRESETS = {
     ["name:ja", "name"], // 2줄: 일본어(로컬 표기)
     ["name:ko"], // 3줄: 한국어(데이터가 있는 경우만)
   ],
-  default: [["name:latin", "name"], ["name:nonlatin"]], // OpenFreeMap 기본과 비슷한 2줄
 };
 
 export function createLeafletOpenFreeMapProvider() {
@@ -47,7 +47,9 @@ export function createLeafletOpenFreeMapProvider() {
   // onMapClick은 지도가 아직 준비되기 전에도 호출될 수 있으므로(버튼 바인딩이
   // 지도 로딩을 기다리지 않도록 app.js에서 먼저 실행됨) 핸들러를 큐에 쌓아두고,
   // 실제 Leaflet map이 생기면 그때 한 번에 연결한다.
+  // onMapClick과 마찬가지로, 지도가 준비되기 전에 등록될 수도 있어 큐잉한다.
   const clickHandlers = [];
+  const moveHandlers = [];
 
   function buildDivIcon(restaurant, isSelected) {
     const category = getCategoryMeta(restaurant.categories?.[0]);
@@ -103,6 +105,11 @@ export function createLeafletOpenFreeMapProvider() {
 
       map.on("click", (e) => {
         clickHandlers.forEach((h) => h({ lat: e.latlng.lat, lng: e.latlng.lng }));
+      });
+
+      map.on("moveend", () => {
+        const c = map.getCenter();
+        moveHandlers.forEach((h) => h({ lat: c.lat, lng: c.lng }));
       });
     },
 
@@ -190,6 +197,12 @@ export function createLeafletOpenFreeMapProvider() {
       clickHandlers.push(handler);
     },
 
+    // 지도 중심이 바뀔 때(패닝/줌 종료 시)마다 handler({lat, lng})를 호출한다.
+    // 현재 보고 있는 위치가 한국/일본 어느 쪽인지에 따라 라벨 언어를 바꾸는 데 사용.
+    onMapMove(handler) {
+      moveHandlers.push(handler);
+    },
+
     // 맛집 등록 폼에서 "지도에서 위치 선택"할 때 쓰는 임시 마커.
     setPickerMarker(lat, lng) {
       if (!map) return;
@@ -223,7 +236,7 @@ export function createLeafletOpenFreeMapProvider() {
       if (!glMap) return;
 
       const apply = () => {
-        const lines = LABEL_LANGUAGE_PRESETS[preset] || LABEL_LANGUAGE_PRESETS.default;
+        const lines = LABEL_LANGUAGE_PRESETS[preset] || LABEL_LANGUAGE_PRESETS.ko;
         const style = glMap.getStyle();
         if (!style?.layers) return;
 

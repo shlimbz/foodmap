@@ -51,12 +51,16 @@
 //     - 지도의 빈 공간 클릭 시 handler({lat, lng})를 호출한다.
 //       (상세 패널 닫기, 맛집 등록 폼의 "지도에서 위치 선택"에 사용)
 //
+//   onMapMove(handler): void
+//     - 지도 중심이 바뀔 때마다(패닝/줌 종료) handler({lat, lng})를 호출한다.
+//       (현재 보고 있는 위치가 한국/일본 어느 쪽인지에 따라 지명 라벨 언어를 바꾸는 데 사용)
+//
 //   setPickerMarker(lat, lng): void
 //   clearPickerMarker(): void
 //     - 맛집 등록 폼에서 좌표를 고르는 동안 보여줄 임시 마커.
 //
 //   setLabelLanguages(preset): void
-//     - 지도에 표시되는 지명 라벨의 언어를 바꾼다. preset: "ko" | "en-ja-ko" | "default"
+//     - 지도에 표시되는 지명 라벨의 언어를 바꾼다. preset: "ko" | "en-ja-ko"
 // }
 // ------------------------------------------------------------
 
